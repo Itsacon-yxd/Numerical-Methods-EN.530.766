@@ -51,9 +51,9 @@ for idx, r in enumerate(r_values):
     axes_cn[idx].grid(True, alpha=0.3)
 
 plt.tight_layout()
-fig_fe.savefig('stability_analysis_forward_euler.png')
-fig_be.savefig('stability_analysis_backward_euler.png')
-fig_cn.savefig('stability_analysis_crank_nicolson.png')
+fig_fe.savefig('stability_analysis_plots_c_ii_b/stability_analysis_forward_euler.png')
+fig_be.savefig('stability_analysis_plots_c_ii_b/stability_analysis_backward_euler.png')
+fig_cn.savefig('stability_analysis_plots_c_ii_b/stability_analysis_crank_nicolson.png')
 
 plt.show()
 
