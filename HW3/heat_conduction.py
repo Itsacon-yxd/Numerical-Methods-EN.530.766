@@ -123,11 +123,7 @@ cn_solution,grid=crank_nicolson(delta_x=2*np.pi/20,max_t=2,r=1/3,m=2)
 print(grid.shape) #(x t) time space
 
 # %%
-def exact_solution(grid,m):
-    u=np.zeros((1,grid.shape[1],grid.shape[2]))
-    for i in range(u.shape[1]):
-        u[:,i,:]=np.exp(-m**2 * grid[1,i]) * np.sin(m * grid[0,i])
-    return u
+
 
 # %%
 solution = exact_solution(grid, 2)
