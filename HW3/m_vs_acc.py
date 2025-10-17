@@ -1,0 +1,51 @@
+import numpy as np
+from matplotlib import pyplot as plt
+from numerical_solvers import backward_euler, forward_euler, crank_nicolson,exact_solution
+
+m_values=[3,5,7]
+delta_x=np.pi/10.0
+r=0.5
+max_t=0.5
+
+for m in m_values:
+    fe_solution,grid=forward_euler(m=m, delta_x=delta_x, r=r, max_t=max_t)
+    be_solution,grid=backward_euler(m=m, delta_x=delta_x, r=r, max_t=max_t)
+    cn_solution,grid=crank_nicolson(m=m, delta_x=delta_x, r=r, max_t=max_t)
+
+    exact=exact_solution(grid,m=m)
+
+    plt.figure(figsize=(10,6))
+    plt.plot(grid[0,-1],exact[0,-1],label='Exact',color='black',linewidth=2)
+    plt.plot(grid[0,-1],fe_solution[0,-1],label='Forward Euler',linestyle='--')
+    plt.title(f'Solution at t={max_t} for m={m} for FE')
+    plt.xlabel('x')
+    plt.ylabel('u(x,t)')
+    plt.legend()
+    plt.grid()
+    plt.savefig(f'm_vs_acc_d/solution_m={m}_FE.png')
+    plt.show()
+    
+    plt.figure(figsize=(10,6))
+    plt.plot(grid[0,-1],exact[0,-1],label='Exact',color='black',linewidth=2)
+    plt.plot(grid[0,-1],be_solution[0,-1],label='Backward Euler',linestyle='-.')
+    plt.title(f'Solution at t={max_t} for m={m} for BE')
+    plt.xlabel('x')
+    plt.ylabel('u(x,t)')
+    plt.legend()
+    plt.grid()
+    plt.savefig(f'm_vs_acc_d/solution_m={m}_BE.png')
+    plt.show()
+
+    plt.figure(figsize=(10,6))
+    plt.plot(grid[0,-1],exact[0,-1],label='Exact',color='black',linewidth=2)
+    plt.plot(grid[0,-1],cn_solution[0,-1],label='Crank-Nicolson',linestyle=':')
+    plt.title(f'Solution at t={max_t} for m={m} for CN')
+    plt.xlabel('x')
+    plt.ylabel('u(x,t)')
+    plt.legend()
+    plt.grid()
+    plt.savefig(f'm_vs_acc_d/solution_m={m}_CN.png')
+    plt.show()
+    
+
+    
