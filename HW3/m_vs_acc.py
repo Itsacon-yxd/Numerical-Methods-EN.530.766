@@ -56,18 +56,35 @@ def amplitude_factor_be(r, theta):
 def amplitude_factor_cn(r, theta):
     return (1 - 2 * r * (np.sin(theta / 2))**2) / (1 + 2 * r * (np.sin(theta / 2))**2)
 
+def amplitude_factor_exact(r, theta):
+    return np.exp(-r * theta**2)
+
 theta = np.linspace(0, np.pi, 100)
 plt.figure(figsize=(10,6))
 plt.plot(theta, amplitude_factor_fe(r, theta), label='Forward Euler', linestyle='--')
 plt.plot(theta, amplitude_factor_be(r, theta), label='Backward Euler', linestyle='-.')
 plt.plot(theta, amplitude_factor_cn(r, theta), label='Crank-Nicolson', linestyle=':')
+plt.plot(theta, amplitude_factor_exact(r, theta), label='Exact', color='black', linewidth=2)
 plt.axvline(x=3*np.pi/10, color='grey', linestyle='--', label='Theta = 3π/10 (m=3)')
 plt.axvline(x=5*np.pi/10, color='brown', linestyle='--', label='Theta = 5π/10 (m=5)')
 plt.axvline(x=7*np.pi/10, color='green', linestyle='--', label='Theta = 7π/10 (m=7)')
-plt.title('Amplitude Factors vs Theta')
+plt.title('Amplification Factors vs Theta at r=0.5')
 plt.xlabel('Theta')
-plt.ylabel('Amplitude Factor')
+plt.ylabel('Amplification Factor')
 plt.legend()
 plt.grid()
-plt.savefig('m_vs_acc_d/amplitude_factors.png')
+plt.savefig('m_vs_acc_d/amplification_factors.png')
 plt.show()
+
+print(f'FE Amplification Factors for r={r} at m=3,5,7:')
+for m in m_values:
+    print(f'  m={m}: {amplitude_factor_fe(r, delta_x * m)}')
+print(f'BE Amplification Factors for r={r} at m=3,5,7:')
+for m in m_values:
+    print(f'  m={m}: {amplitude_factor_be(r, delta_x * m)}')
+print(f'CN Amplification Factors for r={r} at m=3,5,7:')
+for m in m_values:
+    print(f'  m={m}: {amplitude_factor_cn(r, delta_x * m)}')
+print(f'Exact Amplification Factors for r={r} at m=3,5,7:')
+for m in m_values:
+    print(f'  m={m}: {amplitude_factor_exact(r, delta_x * m)}')
