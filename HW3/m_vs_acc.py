@@ -7,46 +7,54 @@ delta_x=np.pi/10.0
 r=0.5
 max_t=0.5
 
-for m in m_values:
+fig_fe,axes_fe = plt.subplots(nrows=1,ncols=len(m_values),figsize=(15,5))
+fig_be,axes_be = plt.subplots(nrows=1,ncols=len(m_values),figsize=(15,5))
+fig_cn,axes_cn = plt.subplots(nrows=1,ncols=len(m_values),figsize=(15,5))
+
+
+for idx,m in enumerate(m_values):
     fe_solution,grid=forward_euler(m=m, delta_x=delta_x, r=r, max_t=max_t)
     be_solution,grid=backward_euler(m=m, delta_x=delta_x, r=r, max_t=max_t)
     cn_solution,grid=crank_nicolson(m=m, delta_x=delta_x, r=r, max_t=max_t)
 
     exact=exact_solution(grid,m=m)
 
-    plt.figure(figsize=(10,6))
-    plt.plot(grid[0,-1],exact[0,-1],label='Exact',color='black',linewidth=2)
-    plt.plot(grid[0,-1],fe_solution[0,-1],label='Forward Euler',linestyle='--')
-    plt.title(f'Solution at t={max_t} for m={m} for FE')
-    plt.xlabel('x')
-    plt.ylabel('u(x,t)')
-    plt.legend()
-    plt.grid()
-    plt.savefig(f'm_vs_acc_d/solution_m={m}_FE.png')
-    plt.show()
-    
-    plt.figure(figsize=(10,6))
-    plt.plot(grid[0,-1],exact[0,-1],label='Exact',color='black',linewidth=2)
-    plt.plot(grid[0,-1],be_solution[0,-1],label='Backward Euler',linestyle='-.')
-    plt.title(f'Solution at t={max_t} for m={m} for BE')
-    plt.xlabel('x')
-    plt.ylabel('u(x,t)')
-    plt.legend()
-    plt.grid()
-    plt.savefig(f'm_vs_acc_d/solution_m={m}_BE.png')
+    axes_fe[idx].plot(grid[0,-1],exact[0,-1],label='Exact',color='black',linewidth=2)
+    axes_fe[idx].plot(grid[0,-1],fe_solution[0,-1],label='Forward Euler',linestyle='--')
+    axes_fe[idx].set_title(f'Solution at t={max_t} for m={m} for FE')
+    axes_fe[idx].set_xlabel('x')
+    axes_fe[idx].set_ylabel('u(x,t)')
+    axes_fe[idx].legend()
+    axes_fe[idx].grid()
+    # fig_fe.savefig(f'm_vs_acc_d/solution_m={m}_FE.png')
+
+    axes_be[idx].plot(grid[0,-1],exact[0,-1],label='Exact',color='black',linewidth=2)
+    axes_be[idx].plot(grid[0,-1],be_solution[0,-1],label='Backward Euler',linestyle='-.')
+    axes_be[idx].set_title(f'Solution at t={max_t} for m={m} for BE')
+    axes_be[idx].set_xlabel('x')
+    axes_be[idx].set_ylabel('u(x,t)')
+    axes_be[idx].legend()
+    axes_be[idx].grid()
+    # fig_be.savefig(f'm_vs_acc_d/solution_m={m}_BE.png')
     plt.show()
 
-    plt.figure(figsize=(10,6))
-    plt.plot(grid[0,-1],exact[0,-1],label='Exact',color='black',linewidth=2)
-    plt.plot(grid[0,-1],cn_solution[0,-1],label='Crank-Nicolson',linestyle=':')
-    plt.title(f'Solution at t={max_t} for m={m} for CN')
-    plt.xlabel('x')
-    plt.ylabel('u(x,t)')
-    plt.legend()
-    plt.grid()
-    plt.savefig(f'm_vs_acc_d/solution_m={m}_CN.png')
+    axes_cn[idx].plot(grid[0,-1],exact[0,-1],label='Exact',color='black',linewidth=2)
+    axes_cn[idx].plot(grid[0,-1],cn_solution[0,-1],label='Crank-Nicolson',linestyle=':')
+    axes_cn[idx].set_title(f'Solution at t={max_t} for m={m} for CN')
+    axes_cn[idx].set_xlabel('x')
+    axes_cn[idx].set_ylabel('u(x,t)')
+    axes_cn[idx].legend()
+    axes_cn[idx].grid()
+    # plt.savefig(f'm_vs_acc_d/solution_m={m}_CN.png')
     plt.show()
-    
+
+fig_fe.suptitle('Forward Euler Solutions for Different m Values')
+fig_fe.savefig('m_vs_acc_d/FE_solutions.png')
+fig_be.suptitle('Backward Euler Solutions for Different m Values')
+fig_be.savefig('m_vs_acc_d/BE_solutions.png')
+fig_cn.suptitle('Crank-Nicolson Solutions for Different m Values')
+fig_cn.savefig('m_vs_acc_d/CN_solutions.png')
+
 def amplitude_factor_fe(r, theta):
     return 1 - 4 * r * (np.sin(theta / 2))**2
 
