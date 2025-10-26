@@ -1,8 +1,6 @@
 # %%
-from matplotlib.pylab import f
 import numpy as np
 import matplotlib.pyplot as plt
-from copy import deepcopy
 from numerical_solvers import forward_euler, backward_euler, crank_nicolson, exact_solution
 
 # %% [markdown]

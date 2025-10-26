@@ -1,4 +1,3 @@
-from networkx import cn_soundarajan_hopcroft
 import numpy as np
 import matplotlib.pyplot as plt
 from numerical_solvers import backward_euler, crank_nicolson, exact_solution
