@@ -19,6 +19,9 @@ def get_residual(solution,delta,sum=True):
         return res
 
 def jacobi(u_init='zero', max_iter=1000, delta=torch.pi/10):
+    '''
+    u_init='zero', 'xy', 'random'
+    '''
     
     x_grid = torch.arange(0, 2*torch.pi + 0.5*delta, delta)
     y_grid = torch.arange(0, 2*torch.pi + 0.5*delta, delta)
