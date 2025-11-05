@@ -1,6 +1,6 @@
 import torch
 import matplotlib.pyplot as plt
-from jacobi import jacobi,get_residual
+from elliptic_solvers import jacobi,get_residual
 
 torch.manual_seed(0)  # For reproducibility
 
