@@ -1,0 +1,10 @@
+Initial condition: xy
+Initial condition: random
+Jacobi converged for initial condition "xy" at iteration 1136
+Gauss-Seidel converged for initial condition "xy" at iteration 573
+Jacobi convergence rate: 162.43 iterations per 10^-1
+Gauss-Seidel convergence rate: 82.00 iterations per 10^-1
+Jacobi converged for initial condition "random" at iteration 1175
+Gauss-Seidel converged for initial condition "random" at iteration 356
+Jacobi convergence rate: 168.00 iterations per 10^-1
+Gauss-Seidel convergence rate: 51.00 iterations per 10^-1
