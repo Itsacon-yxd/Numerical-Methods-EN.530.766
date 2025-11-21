@@ -27,9 +27,7 @@ def solve_instance(solver_func, w, max_iter, delta, criterion):
     torch.set_num_threads(torch.get_num_threads())  # Reset to default after computation
     # Check convergence
     converg = torch.where(residual < criterion)[0]
-    check_instability = torch.
-    if len(converg) > 0 and 
-    # return converg[0].item() if len(converg) > 0 else max_iter
+    return converg[0].item() if len(converg) > 0 else max_iter
 
 # --- 2. Main Execution Block ---
 # (Necessary for multiprocessing on Windows/macOS)
