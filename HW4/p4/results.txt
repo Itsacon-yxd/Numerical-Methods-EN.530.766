@@ -1,0 +1,1 @@
+Optimal w_3: 0.7464646697044373, Minimum iterations to converge: 632
