@@ -139,12 +139,11 @@ def sor_gauss_seidel(u_init='random', max_iter=1000, delta=torch.pi/10, w=1.0, v
     residual=[]
 
     for _ in tqdm(range(max_iter), disable=not verbose):
-        u_star = solution.clone()
         for i in range(1,N-1):
             for j in range(1,N-1):
-                u_star[:, :, i, j] = 0.25 * (u_star[:, :, i+1, j] + u_star[:, :, i-1, j] + u_star[:, :, i, j+1] + u_star[:, :, i, j-1]) 
-        
-        solution = (1-w)*solution + w*u_star
+
+                p_star = 0.25 * (solution[:, :, i+1, j] + solution[:, :, i-1, j] + solution[:, :, i, j+1] + solution[:, :, i, j-1])
+                solution[:, :, i, j] = (1-w)*solution[:, :, i, j] + w*p_star
 
         residual.append(get_residual(solution,delta))
 
@@ -297,7 +296,7 @@ if __name__=='__main__':
     plt.savefig("test/gauss_seidel residual.svg")
     plt.close()
 
-    grid, solution, residual = sor_gauss_seidel(u_init='xy', max_iter=1000, delta=delta, w=2.1)
+    grid, solution, residual = sor_gauss_seidel(u_init='xy', max_iter=1000, delta=delta, w=1.5)
     print(f"Grid Shape: {grid.shape},Solution Shape: {solution.shape}")
     plt.plot(residual)
     plt.yscale('log')
