@@ -24,6 +24,7 @@ class LaplaceSolver(object):
         return mask
     
     def solve(self, boundary_list, w=1.0, max_iter=100, verbose=True):
+        torch.manual_seed(0)
         u = 2 * torch.rand(self.num_pts, self.num_pts) - 1
         
         inner_boundary = self.find_boundary(boundary_list)
@@ -74,19 +75,19 @@ class LaplaceSolver(object):
 
 
 if __name__ == "__main__":
-    solver = LaplaceSolver(num_pts=32)
+    solver = LaplaceSolver(num_pts=128)
     boundary_list = torch.tensor(
-        [[0.5,0.5,0.25]]
-        # [[0.25,0.25,0.125],
-        #  [0.25,0.75,0.125],
-        #  [0.75,0.25,0.125],
-        #  [0.75,0.75,0.125]]
+        # [[0.5,0.5,0.25]]
+        [[0.25,0.25,0.125],
+         [0.25,0.75,0.125],
+         [0.75,0.25,0.125],
+         [0.75,0.75,0.125]]
         )
     mask = solver.find_boundary(boundary_list)
     plt.imshow(mask,origin='lower')
     plt.show()
 
-    solution = solver.solve(boundary_list, w=1.5, max_iter=100)
+    solution = solver.solve(boundary_list, w=1.5, max_iter=1000)
     plt.imshow(solution.squeeze(),origin='lower', extent=[0, 1, 0, 1])
     plt.colorbar()
     plt.show()
