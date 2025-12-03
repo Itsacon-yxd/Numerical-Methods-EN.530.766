@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 from functools import partial
 import time
 
-class LaplaceSolverJAXPointwise(object):
+class LaplaceSolver(object):
     def __init__(self, num_pts, boundary_list):
         self.num_pts = num_pts
         self.x = jnp.linspace(0, 1, num_pts)
@@ -69,7 +69,7 @@ class LaplaceSolverJAXPointwise(object):
         # JAX JIT hates it when array shapes change (like the number of active pixels)
         # so we calculate indices here in eager mode.
         
-        u = 2 * jax.random.uniform(jax.random.PRNGKey(0), (self.num_pts, self.num_pts)) - 1
+        u = jax.random.uniform(jax.random.PRNGKey(0), (self.num_pts, self.num_pts), minval=-1, maxval=1)
         
         u = u.at[self.whole_boundary].set(0.0)
         u = u.at[self.inner_boundary].set(1.0)
@@ -99,7 +99,7 @@ class LaplaceSolverJAXPointwise(object):
 
 # --- Comparison Script ---
 if __name__ == "__main__":
-    N = 160 # Grid Size
+    N = 256 # Grid Size
         
     boundary_list = jnp.array([
         [0.5, 0.5, 0.25],
@@ -110,7 +110,7 @@ if __name__ == "__main__":
     ])
     
     print(f"Initializing Pointwise JAX Solver (N={N})...")
-    jax_solver = LaplaceSolverJAXPointwise(num_pts=N, boundary_list=boundary_list)
+    jax_solver = LaplaceSolver(num_pts=N, boundary_list=boundary_list)
 
     print("Compiling (Warmup)...")
     # This might take a moment because unrolling/scanning over pixels is heavy
