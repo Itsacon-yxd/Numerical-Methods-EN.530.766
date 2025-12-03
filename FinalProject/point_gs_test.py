@@ -1,27 +1,28 @@
 from concurrent.futures import ProcessPoolExecutor
-import re
 import jax.numpy as jnp
 import matplotlib.pyplot as plt
-from jax_solver import LaplaceSolver
+from jax_solver import Pt_GS_Solver
 from time import time
 
 grid_sizes = [32, 96, 160, 224]
 boundary_condition = jnp.array([[0.5, 0.5, 0.25]])
 
-def solve_grid(N, repeat=10):
-    solver = LaplaceSolver(num_pts=N, boundary_list=boundary_condition)
-    solution, residuals = solver.solve(max_iter=2, w=1.5)
+def solve_grid(N, repeat=1):
+    solver = Pt_GS_Solver(num_pts=N, boundary_list=boundary_condition)
+    _ = solver.solve(max_iter=2, w=1.5)
     start_time = time()
     for _ in range(repeat):
-        solution, residuals = solver.solve(max_iter=12000, w=1.5)
+        solution, residuals = solver.solve(max_iter=12000, w=1.)
         solution.block_until_ready()
     end_time = time()
-    return solution, residuals, end_time - start_time
+    return solution, residuals, (end_time - start_time) / repeat
 
 # Run solvers in parallel
 if __name__ == "__main__":
     with ProcessPoolExecutor() as executor:
+        start_time = time()
         results = list(executor.map(solve_grid, grid_sizes))
+        end_time = time()
 
     solution_list, residual_list, time_list = zip(*results)
 
@@ -44,6 +45,10 @@ if __name__ == "__main__":
     plt.tight_layout()
     plt.savefig('p_c/laplace_residuals.svg')
     plt.show()
-    print("Execution times for each grid size:")
-    for N, t in zip(grid_sizes, time_list):
-        print(f"Grid size {N}x{N}: {t:.2f} seconds")
+    with open('output.txt', 'w') as f:
+
+        print("Execution times for each grid size:", file=f)
+        for N, t in zip(grid_sizes, time_list):
+            print(f"Grid size {N}x{N}: {t:.2f} seconds", file=f)
+
+        print(f"Total execution time for all grid sizes: {end_time - start_time:.2f} seconds", file=f)

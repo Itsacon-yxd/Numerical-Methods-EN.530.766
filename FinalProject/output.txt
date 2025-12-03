@@ -1,0 +1,6 @@
+Execution times for each grid size:
+Grid size 32x32: 0.19 seconds
+Grid size 96x96: 1.15 seconds
+Grid size 160x160: 3.34 seconds
+Grid size 224x224: 6.82 seconds
+Total execution time for all grid sizes: 9.35 seconds

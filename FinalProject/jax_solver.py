@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 from functools import partial
 import time
 
-class LaplaceSolver(object):
+class Pt_GS_Solver(object):
     def __init__(self, num_pts, boundary_list):
         self.num_pts = num_pts
         self.x = jnp.linspace(0, 1, num_pts)
@@ -110,7 +110,7 @@ if __name__ == "__main__":
     ])
     
     print(f"Initializing Pointwise JAX Solver (N={N})...")
-    jax_solver = LaplaceSolver(num_pts=N, boundary_list=boundary_list)
+    jax_solver = Pt_GS_Solver(num_pts=N, boundary_list=boundary_list)
 
     print("Compiling (Warmup)...")
     # This might take a moment because unrolling/scanning over pixels is heavy
