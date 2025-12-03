@@ -97,6 +97,117 @@ class Pt_GS_Solver(object):
         else:
             return res
 
+class Line_GS_Solver(object):
+    def __init__(self, num_pts, boundary_list):
+        self.num_pts = num_pts
+        self.x = jnp.linspace(0, 1, num_pts)
+        self.grid = jnp.stack(jnp.meshgrid(self.x, self.x, indexing='ij'))
+        self.delta = self.x[1] - self.x[0]
+        self.inner_boundary = self.find_boundary(boundary_list)
+
+        self.whole_boundary = self.inner_boundary
+        self.whole_boundary = self.whole_boundary.at[0, :].set(True)
+        self.whole_boundary = self.whole_boundary.at[-1, :].set(True)
+        self.whole_boundary = self.whole_boundary.at[:, 0].set(True)
+        self.whole_boundary = self.whole_boundary.at[:, -1].set(True)
+
+    def find_boundary(self, boundary_list):
+        mask = jnp.zeros((self.num_pts, self.num_pts), dtype=bool)
+        for i in range(boundary_list.shape[0]):
+            center = boundary_list[i, :-1]
+            radius = boundary_list[i, -1]
+            dist_sq = jnp.sum((self.grid - center[:, None, None])**2, axis=0)
+            mask = jnp.logical_or(mask, dist_sq <= radius**2)
+        return mask
+
+    @partial(jax.jit, static_argnames=['self', 'max_iter'])
+    def _solve_core(self, u, row_ls, w, max_iter):
+        
+        def update_line(u, row):
+            # Get mask for this row
+            mask = self.whole_boundary[row, 1:-1]
+            n_total = self.num_pts - 2 
+            
+            # --- VECTORIZED MATRIX BUILD ---
+            # Main diagonal: 1.0 for boundaries, -4.0 for unknowns
+            d = jnp.where(mask, 1.0, -4.0)
+            
+            # Identify connections between adjacent non-boundary points
+            # shape of mask is (n_total,)
+            # We want to check i and i+1. 
+            active_links = (~mask[:-1]) & (~mask[1:])
+            
+            # Construct off-diagonals immediately without loops
+            # du[i] connects i to i+1. Last element is 0.
+            du = jnp.append(jnp.where(active_links, 1.0, 0.0), 0.0)
+            
+            # dl[i] connects i to i-1. First element is 0.
+            # Note: In tridiagonal_solve, dl usually aligns such that dl[i] is interaction with i-1
+            dl = jnp.append(0.0, jnp.where(active_links, 1.0, 0.0))
+            
+            # --- VECTORIZED RHS ---
+            # (Your RHS logic was largely fine, but ensure explicit indexing avoids copies)
+            horiz_contrib = u[row - 1, 1:-1] + u[row + 1, 1:-1]
+            
+            left_contrib = jnp.where(self.whole_boundary[row, :-2], u[row, :-2], 0.0)
+            right_contrib = jnp.where(self.whole_boundary[row, 2:], u[row, 2:], 0.0)
+            
+            rhs_val = -(horiz_contrib + left_contrib + right_contrib)
+            
+            # Apply identity trick to RHS
+            rhs = jnp.where(mask, u[row, 1:-1], rhs_val)
+            
+            # Solve
+            u_new = jax.lax.linalg.tridiagonal_solve(dl, d, du, rhs[:,None]).squeeze()
+            
+            # SOR Update
+            u_updated = (1 - w) * u[row, 1:-1] + w * u_new
+            
+            # Final mask application (ensure boundaries strictly stay fixed)
+            u_final_row = jnp.where(mask, u[row, 1:-1], u_updated)
+            
+            # Update grid
+            u = u.at[row, 1:-1].set(u_final_row)
+            
+            return u, None
+        
+        def sweep_fn(u, _):
+            u, _ = jax.lax.scan(update_line, u, row_ls)
+            residual = self.get_residual(u, sum=True)
+            return u, residual
+        
+        u_final, residuals = jax.lax.scan(sweep_fn, u, jnp.arange(max_iter))
+        
+        return u_final, residuals
+
+    def solve(self, w=1.0, max_iter=100):
+        # 1. Setup (Done outside JIT to handle dynamic shapes of active_idx)
+        # JAX JIT hates it when array shapes change (like the number of active pixels)
+        # so we calculate indices here in eager mode.
+        
+        u = jax.random.uniform(jax.random.PRNGKey(0), (self.num_pts, self.num_pts), minval=-1, maxval=1)
+        
+        u = u.at[self.whole_boundary].set(0.0)
+        u = u.at[self.inner_boundary].set(1.0)
+
+        # 2. Run the JIT-compiled Pointwise Solver
+        return self._solve_core(u, jnp.arange(1,self.num_pts-1), w, max_iter)
+
+    def get_residual(self, solution, sum=True):
+
+        kernel = jnp.array([[0, 1, 0], [1, -4, 1], [0, 1, 0]], dtype=jnp.float32)
+        kernel = kernel[None, None, :, :]
+        
+        res = jax.lax.conv(solution[None, None, :, :], kernel, (1, 1), 'VALID').squeeze()
+        res = jax.lax.pad(res, 0.0, [(1, 1, 0), (1, 1, 0)])
+        res = res / self.delta**2
+        res = res.squeeze() * (~self.whole_boundary)
+
+        if sum:
+            return jnp.mean(res**2)
+        else:
+            return res
+
 # --- Comparison Script ---
 if __name__ == "__main__":
     N = 256 # Grid Size
