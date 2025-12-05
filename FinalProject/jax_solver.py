@@ -190,14 +190,14 @@ class Line_GS_Solver(object):
         
         return u_final, residuals
 
-    def solve(self, w=1.0, max_iter=100):
+    def solve(self, outer_bc=0.0, w=1.0, max_iter=100):
         # 1. Setup (Done outside JIT to handle dynamic shapes of active_idx)
         # JAX JIT hates it when array shapes change (like the number of active pixels)
         # so we calculate indices here in eager mode.
         
         u = jax.random.uniform(jax.random.PRNGKey(0), (self.num_pts, self.num_pts), minval=-1, maxval=1)
         
-        u = u.at[self.whole_boundary].set(0.0)
+        u = u.at[self.whole_boundary].set(outer_bc)
         u = u.at[self.inner_boundary].set(1.0)
 
         # 2. Run the JIT-compiled Pointwise Solver
@@ -205,7 +205,7 @@ class Line_GS_Solver(object):
 
     def get_residual(self, solution, sum=True):
 
-        kernel = jnp.array([[0, 1, 0], [1, -4, 1], [0, 1, 0]], dtype=jnp.float32)
+        kernel = jnp.array([[0, 1, 0], [1, -4, 1], [0, 1, 0]], dtype=solution.dtype)
         kernel = kernel[None, None, :, :]
         
         res = jax.lax.conv(solution[None, None, :, :], kernel, (1, 1), 'VALID').squeeze()
@@ -217,6 +217,117 @@ class Line_GS_Solver(object):
             return jnp.mean(res**2)
         else:
             return res
+        
+
+class PotentialFlow_Solver(object):
+    def __init__(self, num_pts, boundary_list):
+        self.num_pts = num_pts
+        self.x = jnp.linspace(0, 4, num_pts)
+        self.grid = jnp.stack(jnp.meshgrid(self.x, self.x, indexing='ij'))
+        self.delta = self.x[1] - self.x[0]
+        self.inner_boundary = self.find_boundary(boundary_list)
+
+        self.whole_boundary = self.inner_boundary
+        self.whole_boundary = self.whole_boundary.at[0, :].set(True)
+        self.whole_boundary = self.whole_boundary.at[-1, :].set(True)
+        self.whole_boundary = self.whole_boundary.at[:, 0].set(True)
+        self.whole_boundary = self.whole_boundary.at[:, -1].set(True)
+
+        active_r, active_c = jnp.where(~self.whole_boundary)
+        self.active_idx = jnp.stack([active_r, active_c], axis=1)
+
+    def find_boundary(self, boundary_list):
+        mask = jnp.zeros((self.num_pts, self.num_pts), dtype=bool)
+        for i in range(boundary_list.shape[0]):
+            center = boundary_list[i, :-1]
+            radius = boundary_list[i, -1]
+            dist_sq = jnp.sum((self.grid - center[:, None, None])**2, axis=0)
+            mask = jnp.logical_or(mask, dist_sq <= radius**2)
+        return mask
+
+    # We separate the "Solver Core" to JIT compile just the loop part.
+    # We must pass 'active_idx' in because JAX needs to know loop lengths at compile time.
+    @partial(jax.jit, static_argnames=['self', 'max_iter'])
+    def _solve_core(self, u,  w, max_iter):
+        
+        # The Step Function: What happens for ONE pixel update
+        def update_pixel(u, idx_pair, boundary=self.inner_boundary):
+            r, c = idx_pair
+            
+            val_up    = jax.lax.cond(boundary[r-1,c], lambda _:u[r,c], lambda _:u[r-1,c], None)
+            val_down  = jax.lax.cond(boundary[r+1,c], lambda _:u[r,c], lambda _:u[r+1,c], None)
+            val_left  = jax.lax.cond(boundary[r,c-1], lambda _:u[r,c], lambda _:u[r,c-1], None)
+            val_right = jax.lax.cond(boundary[r,c+1], lambda _:u[r,c], lambda _:u[r,c+1], None)
+            
+            gs_est = 0.25 * (val_up + val_down + val_left + val_right)
+            new_val = (1 - w) * u[r, c] + w * gs_est
+            
+            # In-place update using .at[].set()
+            u = u.at[r, c].set(new_val)
+            return u, None # scan requires a 'carry' (u) and 'output' (None)
+
+        # The Iteration Body: One full sweep over the grid
+        def sweep_fn(u_prev, _):
+            # scan loops over 'active_idx', carrying 'u' along
+            u_new, _ = jax.lax.scan(update_pixel, u_prev, self.active_idx)
+
+            diff = jnp.abs(u_new - u_prev)
+            return u_new, jnp.nansum(diff)
+
+        # Run the outer loop (max_iter)
+        u_final, residual = jax.lax.scan(sweep_fn, u, jnp.arange(max_iter))
+        
+        return u_final, residual
+
+    def solve(self, w=1.0, max_iter=100):
+        
+        u = jax.random.uniform(jax.random.PRNGKey(0), (self.num_pts, self.num_pts), minval=-1, maxval=1)
+        
+        u = u.at[self.whole_boundary].set(self.grid[1][self.whole_boundary])
+        u = u.at[self.inner_boundary].set(jnp.nan)
+
+        return self._solve_core(u, w, max_iter)
+    
+    def get_velocity_field(self, solution):
+
+
+        velocity = jnp.zeros((2,self.num_pts,self.num_pts))
+
+        def update_pixel(velocity, idx_pair, u=solution, boundary=self.inner_boundary):
+            r, c = idx_pair
+            
+            val_up    = jax.lax.cond(boundary[r-1,c], lambda _:u[r,c], lambda _:u[r-1,c], None)
+            val_down  = jax.lax.cond(boundary[r+1,c], lambda _:u[r,c], lambda _:u[r+1,c], None)
+            val_left  = jax.lax.cond(boundary[r,c-1], lambda _:u[r,c], lambda _:u[r,c-1], None)
+            val_right = jax.lax.cond(boundary[r,c+1], lambda _:u[r,c], lambda _:u[r,c+1], None)
+
+            u_x = (val_right - val_left) / (2*self.delta)
+            u_y = (val_up - val_down) / (2*self.delta)
+
+            velocity = velocity.at[0,r,c].set(u_x)
+            velocity = velocity.at[1,r,c].set(u_y)
+            
+            return velocity, None # scan requires a 'carry' (u) and 'output' (None)
+            
+        velocity, _ = jax.lax.scan(update_pixel, velocity, self.active_idx)
+
+        # --- Top Edge (Row 0) ---
+        velocity = velocity.at[1, 0, :].set((solution[0, :] - solution[1, :]) / self.delta) 
+        velocity = velocity.at[0, 0, 1:-1].set((solution[0, 2:] - solution[0, :-2]) / (2*self.delta))
+
+        # --- Bottom Edge (Row -1) ---
+        velocity = velocity.at[1, -1, :].set((solution[-2, :] - solution[-1, :]) / self.delta)
+        velocity = velocity.at[0, -1, 1:-1].set((solution[-1, 2:] - solution[-1, :-2]) / (2*self.delta))
+
+        # --- Left Edge (Col 0) ---
+        velocity = velocity.at[0, :, 0].set((solution[:, 1] - solution[:, 0]) / self.delta)
+        velocity = velocity.at[1, 1:-1, 0].set((solution[2:, 0] - solution[:-2, 0]) / (2*self.delta))
+
+        # --- Right Edge (Col -1) ---
+        velocity = velocity.at[0, :, -1].set((solution[:, -1] - solution[:, -2]) / self.delta)
+        velocity = velocity.at[1, 1:-1, -1].set((solution[2:, -1] - solution[:-2, -1]) / (2*self.delta))
+
+        return velocity
 
 # --- Comparison Script ---
 if __name__ == "__main__":

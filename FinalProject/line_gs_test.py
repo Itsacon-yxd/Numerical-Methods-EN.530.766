@@ -2,7 +2,9 @@ from jax_solver import Line_GS_Solver
 import matplotlib.pyplot as plt
 import time
 import jax.numpy as jnp
+import jax
 
+jax.config.update("jax_enable_x64", True)
 N = 224 # Grid Size
     
 boundary_list = jnp.array([
