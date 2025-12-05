@@ -5,6 +5,16 @@ import matplotlib.pyplot as plt
 from functools import partial
 import time
 
+def get_accuracy(solution, exact_solution):
+
+    error = jnp.abs(solution - exact_solution)
+    mse = jnp.mean(error**2)
+    return mse
+
+def harmonic_solution(x, y, center, radius):
+    # Analytical solution for Laplace's equation with circular boundary u = 1 + log(r/r0)
+    return 1 + jnp.log(jnp.sqrt((x - center[0])**2 + (y - center[1])**2) / radius)
+
 class Pt_GS_Solver(object):
     def __init__(self, num_pts, boundary_list):
         self.num_pts = num_pts
@@ -64,14 +74,14 @@ class Pt_GS_Solver(object):
         
         return u_final, residuals
 
-    def solve(self, w=1.0, max_iter=100):
+    def solve(self, outer_bc=0.0, w=1.0, max_iter=100):
         # 1. Setup (Done outside JIT to handle dynamic shapes of active_idx)
         # JAX JIT hates it when array shapes change (like the number of active pixels)
         # so we calculate indices here in eager mode.
         
         u = jax.random.uniform(jax.random.PRNGKey(0), (self.num_pts, self.num_pts), minval=-1, maxval=1)
         
-        u = u.at[self.whole_boundary].set(0.0)
+        u = u.at[self.whole_boundary].set(outer_bc)
         u = u.at[self.inner_boundary].set(1.0)
         
         # Get indices of active pixels (Where mask is False)
@@ -84,7 +94,7 @@ class Pt_GS_Solver(object):
 
     def get_residual(self, solution, sum=True):
 
-        kernel = jnp.array([[0, 1, 0], [1, -4, 1], [0, 1, 0]], dtype=jnp.float32)
+        kernel = jnp.array([[0, 1, 0], [1, -4, 1], [0, 1, 0]], dtype=solution.dtype)
         kernel = kernel[None, None, :, :]
         
         res = jax.lax.conv(solution[None, None, :, :], kernel, (1, 1), 'VALID').squeeze()

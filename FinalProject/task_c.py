@@ -3,16 +3,18 @@ import jax.numpy as jnp
 import matplotlib.pyplot as plt
 from jax_solver import Pt_GS_Solver
 from time import time
+import jax
+jax.config.update("jax_enable_x64", True)
 
 grid_sizes = [32, 96, 160, 224]
 boundary_condition = jnp.array([[0.5, 0.5, 0.25]])
 
 def solve_grid(N, repeat=1):
     solver = Pt_GS_Solver(num_pts=N, boundary_list=boundary_condition)
-    _ = solver.solve(max_iter=2, w=1.5)
+    _ = solver.solve(max_iter=2)
     start_time = time()
     for _ in range(repeat):
-        solution, residuals = solver.solve(max_iter=12000, w=1.)
+        solution, residuals = solver.solve(max_iter=32000, w=1.)
         solution.block_until_ready()
     end_time = time()
     return solution, residuals, (end_time - start_time) / repeat
@@ -32,7 +34,7 @@ if __name__ == "__main__":
         ax.set_title(f'Grid Size: {N}x{N}')
         fig.colorbar(im, ax=ax)
     plt.tight_layout()
-    plt.savefig('p_c/laplace_solutions.svg')
+    plt.savefig('task_c/laplace_solutions.svg')
     plt.show()
     fig, ax = plt.subplots(figsize=(8, 6))
     for residuals, N in zip(residual_list, grid_sizes):
@@ -43,9 +45,9 @@ if __name__ == "__main__":
     ax.legend()
     plt.grid()
     plt.tight_layout()
-    plt.savefig('p_c/laplace_residuals.svg')
+    plt.savefig('task_c/laplace_residuals.svg')
     plt.show()
-    with open('output.txt', 'w') as f:
+    with open('task_c/output.txt', 'w') as f:
 
         print("Execution times for each grid size:", file=f)
         for N, t in zip(grid_sizes, time_list):
