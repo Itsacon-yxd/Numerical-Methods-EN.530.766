@@ -4,7 +4,6 @@ import matplotlib.pyplot as plt
 from jax_solver import Pt_GS_Solver
 from time import time
 import jax
-jax.config.update("jax_enable_x64", True)
 
 grid_sizes = [32, 96, 160, 224]
 boundary_condition = jnp.array([[0.5, 0.5, 0.25]])
